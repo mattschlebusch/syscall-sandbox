@@ -10,8 +10,7 @@ const KVM_CREATE_VM: u64 = 0xae01;
 const KVM_CREATE_VCPU: u64 = 0xae41;
 const KVM_GET_VCPU_MMAP_SIZE: u64 = 0xae04;
 
-/// Helper to turn libc return values into an [io::Result](std::io::Result). Returns
-/// [`Error::last_os_error`](std::io::Error::last_os_error) if `ret < 0`.
+/// Helper to turn libc return values into a Rustic Result
 fn convert_os_err(ret: libc::c_int) -> io::Result<libc::c_int> {
     if ret < 0 {
         Err(io::Error::last_os_error())
@@ -26,20 +25,20 @@ fn main() -> Result<(), Error> {
         libc::open("/dev/kvm\0".as_ptr().cast(), libc::O_RDWR | libc::O_CLOEXEC)
     }).map(|fd| unsafe { File::from_raw_fd(fd) })?;
 
-    println!("Fetching KVM VCPU mmap size");
+    println!("Fetching KVM vCPU mmap size");
     let vcpu_mmap_size = convert_os_err(unsafe { ioctl(kvm.as_raw_fd(), KVM_GET_VCPU_MMAP_SIZE, 0) })
         .map(|size| size as usize)?;
-    println!("KVM VCPU size: {}", vcpu_mmap_size);
+    println!("KVM vCPU size: {}", vcpu_mmap_size);
 
     println!("Creating VM instance");
-    let vm = convert_os_err(unsafe { ioctl(kvm.as_raw_fd(), KVM_CREATE_VM, 0 /* machine id */) })
+    let vm = convert_os_err(unsafe { ioctl(kvm.as_raw_fd(), KVM_CREATE_VM, 0) })
         .map(|fd| unsafe { File::from_raw_fd(fd) })?;
 
-    println!("Creating KVM VCPU");
+    println!("Creating KVM vCPU");
     let vcpu = convert_os_err(unsafe { ioctl(vm.as_raw_fd(), KVM_CREATE_VCPU, 0) })
         .map(|fd| unsafe { File::from_raw_fd(fd) })?;
 
-    println!("Sharing MMAP space of VM's VCPU resource");
+    println!("Sharing MMAP space of VM's vCPU resource");
     let ptr = unsafe {
         mmap(
             std::ptr::null_mut(),
